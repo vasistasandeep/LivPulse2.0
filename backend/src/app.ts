@@ -101,6 +101,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Simple ping endpoint for basic connectivity test
+app.get('/api/ping', (req, res) => {
+  res.json({ message: 'pong', timestamp: new Date().toISOString() });
+});
+
 // Debug: Database setup endpoint
 app.get('/api/debug/db-status', async (req, res) => {
   try {
