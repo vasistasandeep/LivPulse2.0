@@ -1,19 +1,22 @@
 # Railway Configuration for LivPulse v2.0 Backend
-# Uses Docker for reliable builds (avoiding Nixpacks issues)
+# Using Nixpacks for fast Node.js builds with Puppeteer optimization
 
 [build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+builder = "nixpacks"
+buildCommand = "cd backend && PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --only=production && npm run build && npx prisma generate"
 
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+startCommand = "cd backend && npm start"
 
 [env]
 NODE_ENV = "production"
-PORT = "10000"
+PORT = "3000"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
 
 # Health check configuration
 [healthcheck]
