@@ -6,7 +6,7 @@ services:
     plan: starter
     repo: https://github.com/vasistasandeep/LivPulse2.0
     rootDir: backend
-    buildCommand: npm install && npm run build && npx prisma generate
+    buildCommand: npm ci --only=production --no-audit --no-fund && npm run build && npx prisma generate
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
