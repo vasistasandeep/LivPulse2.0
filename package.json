@@ -8,11 +8,7 @@
     "start": "cd backend && npm start",
     "dev": "cd backend && npm run dev",
     "build:frontend": "cd frontend && npm install && npm run build",
-    "dev:frontend": "cd frontend && npm run dev",
-    "setup": "npm run setup:backend && npm run setup:frontend",
-    "setup:backend": "cd backend && npm install",
-    "setup:frontend": "cd frontend && npm install",
-    "postinstall": "npm run setup:backend"
+    "dev:frontend": "cd frontend && npm run dev"
   },
   "workspaces": [
     "backend",
