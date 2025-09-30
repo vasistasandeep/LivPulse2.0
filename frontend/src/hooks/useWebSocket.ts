@@ -33,7 +33,7 @@ export interface UserStatus {
 }
 
 export const useWebSocket = () => {
-  const { token, user } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -43,13 +43,13 @@ export const useWebSocket = () => {
   const eventListeners = useRef<Map<string, Set<Function>>>(new Map());
 
   const connect = useCallback(() => {
-    if (!token || socketRef.current?.connected) return;
+    if (!accessToken || socketRef.current?.connected) return;
 
     const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
     socketRef.current = io(SOCKET_URL, {
       auth: {
-        token: token
+        token: accessToken
       },
       transports: ['websocket', 'polling'],
       timeout: 20000,
@@ -103,12 +103,12 @@ export const useWebSocket = () => {
           });
         });
       } else {
-        originalOn(event, listener);
+        originalOn(event, listener as (...args: any[]) => void);
       }
       return socket;
     };
 
-  }, [token]);
+  }, [accessToken]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -200,7 +200,7 @@ export const useWebSocket = () => {
 
   // Connection management
   useEffect(() => {
-    if (token && user) {
+    if (accessToken && user) {
       connect();
     } else {
       disconnect();
@@ -209,7 +209,7 @@ export const useWebSocket = () => {
     return () => {
       disconnect();
     };
-  }, [token, user, connect, disconnect]);
+  }, [accessToken, user, connect, disconnect]);
 
   // Cleanup on unmount
   useEffect(() => {

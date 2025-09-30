@@ -13,13 +13,6 @@ interface DashboardsResponse {
   };
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
-
 class DashboardApiService {
   private async request<T>(
     endpoint: string,
