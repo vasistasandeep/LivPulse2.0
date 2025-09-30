@@ -1,0 +1,275 @@
+# LivPulse v2.0 Environment Deployment
+# Staging and production deployment workflows
+
+name: Environment Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Determine deployment environment
+  setup:
+    name: Setup Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      should_deploy: ${{ steps.env.outputs.should_deploy }}
+
+    steps:
+    - name: Determine environment
+      id: env
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          echo "environment=staging" >> $GITHUB_OUTPUT
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+        else
+          echo "environment=none" >> $GITHUB_OUTPUT
+          echo "should_deploy=false" >> $GITHUB_OUTPUT
+        fi
+
+  # Build and test before deployment
+  pre-deployment:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should_deploy == 'true'
+
+    strategy:
+      matrix:
+        component: [backend, frontend]
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.component }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.component }}/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm run test:ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.component }}-build-${{ needs.setup.outputs.environment }}
+        path: ${{ matrix.component }}/dist
+        retention-days: 1
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [setup, pre-deployment]
+    if: needs.setup.outputs.environment == 'staging'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Deploy backend to staging
+      run: |
+        echo "🚀 Deploying backend to staging environment..."
+        # Add staging deployment commands here
+      env:
+        STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        STAGING_REDIS_URL: ${{ secrets.STAGING_REDIS_URL }}
+
+    - name: Deploy frontend to staging
+      run: |
+        echo "🌐 Deploying frontend to staging environment..."
+        # Add staging deployment commands here
+      env:
+        STAGING_FRONTEND_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+
+    - name: Run smoke tests
+      run: |
+        echo "🧪 Running smoke tests on staging..."
+        # Add smoke test commands here
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [setup, pre-deployment]
+    if: needs.setup.outputs.environment == 'production'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: '*-build-production'
+        merge-multiple: true
+
+    - name: Deploy backend to Railway
+      run: |
+        cd backend
+        npm install -g @railway/cli
+        railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    - name: Deploy frontend to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./frontend
+        vercel-args: '--prod'
+
+    - name: Update production URLs
+      run: |
+        echo "✅ Production deployment complete!"
+        echo "🌐 Frontend: https://livpulse-frontend.vercel.app"
+        echo "🔗 Backend: https://livpulse-backend-production.up.railway.app"
+
+  # Database migrations
+  database-migration:
+    name: Database Migration
+    runs-on: ubuntu-latest
+    needs: [setup, pre-deployment]
+    if: needs.setup.outputs.should_deploy == 'true'
+    environment: ${{ needs.setup.outputs.environment }}
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run database migrations
+      run: npx prisma migrate deploy
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    - name: Generate Prisma client
+      run: npx prisma generate
+
+  # Post-deployment verification
+  post-deployment:
+    name: Post-deployment Verification
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-staging, deploy-production, database-migration]
+    if: always() && needs.setup.outputs.should_deploy == 'true'
+
+    steps:
+    - name: Health check - Backend
+      run: |
+        if [[ "${{ needs.setup.outputs.environment }}" == "production" ]]; then
+          URL="https://livpulse-backend-production.up.railway.app/api/health"
+        else
+          URL="${{ secrets.STAGING_BACKEND_URL }}/api/health"
+        fi
+        
+        echo "Checking backend health at: $URL"
+        curl -f $URL || exit 1
+
+    - name: Health check - Frontend
+      run: |
+        if [[ "${{ needs.setup.outputs.environment }}" == "production" ]]; then
+          URL="https://livpulse-frontend.vercel.app"
+        else
+          URL="${{ secrets.STAGING_FRONTEND_URL }}"
+        fi
+        
+        echo "Checking frontend at: $URL"
+        curl -f $URL || exit 1
+
+    - name: Notify deployment status
+      run: |
+        if [[ "${{ job.status }}" == "success" ]]; then
+          echo "✅ Deployment to ${{ needs.setup.outputs.environment }} successful!"
+        else
+          echo "❌ Deployment to ${{ needs.setup.outputs.environment }} failed!"
+          exit 1
+        fi
+
+  # Rollback capability
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'workflow_dispatch'
+    needs: [deploy-staging, deploy-production]
+
+    steps:
+    - name: Rollback backend
+      run: |
+        echo "🔄 Rolling back backend deployment..."
+        # Add rollback commands here
+
+    - name: Rollback frontend
+      run: |
+        echo "🔄 Rolling back frontend deployment..."
+        # Add rollback commands here
+
+    - name: Notify rollback
+      run: |
+        echo "⚠️ Rollback completed for ${{ needs.setup.outputs.environment }}"

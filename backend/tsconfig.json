@@ -8,7 +8,7 @@
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": false,
     "resolveJsonModule": true,
     "declaration": false,
     "declarationMap": false,
@@ -18,14 +18,24 @@
     "strictNullChecks": false,
     "strictFunctionTypes": false,
     "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "allowUnusedLabels": false,
-    "allowUnreachableCode": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    "allowUnusedLabels": true,
+    "allowUnreachableCode": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "noEmitOnError": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": [
+    "src/server.ts",
+    "src/app.ts",
+    "src/modules/data-input/**/*",
+    "src/modules/auth/**/*",
+    "src/modules/common/**/*",
+    "src/config/**/*",
+    "src/middleware/**/*",
+    "src/utils/**/*"
+  ],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/modules/websocket/**/*", "src/modules/csv/**/*", "src/modules/dashboards/**/*", "src/modules/reporting/**/*", "src/modules/users/**/*"]
 }

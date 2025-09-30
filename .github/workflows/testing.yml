@@ -1,0 +1,296 @@
+# LivPulse v2.0 Comprehensive Testing
+# Multi-environment testing and quality assurance
+
+name: Comprehensive Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run nightly tests
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Matrix Testing
+  matrix-test:
+    name: Test Matrix
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['16', '18', '20']
+        component: [backend, frontend]
+        exclude:
+          # Exclude some combinations to reduce CI time
+          - os: windows-latest
+            node-version: '16'
+          - os: macos-latest
+            node-version: '16'
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.component }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.component }}/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm run test:ci
+      env:
+        CI: true
+
+  # Performance Testing
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: livpulse_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd backend && npm ci
+        cd ../frontend && npm ci
+
+    - name: Start backend server
+      run: |
+        cd backend
+        npm run build
+        npm start &
+        sleep 10
+      env:
+        DATABASE_URL: postgresql://postgres:test_password@localhost:5432/livpulse_test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test_jwt_secret
+        JWT_REFRESH_SECRET: test_jwt_refresh_secret
+
+    - name: Run performance tests
+      run: |
+        npm install -g artillery
+        artillery run tests/performance/api-load-test.yml
+      continue-on-error: true
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-results
+        path: artillery-report.html
+        retention-days: 7
+
+  # Code Quality Analysis
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        component: [backend, frontend]
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.component }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.component }}/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint
+      run: npx eslint . --ext .ts,.tsx --format json --output-file eslint-report.json
+      continue-on-error: true
+
+    - name: Run type checking
+      run: npm run type-check
+      continue-on-error: true
+
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        projectBaseDir: ${{ matrix.component }}
+
+    - name: Upload code quality reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-quality-${{ matrix.component }}
+        path: ${{ matrix.component }}/eslint-report.json
+        retention-days: 30
+
+  # Integration Tests
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: livpulse_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Start application stack
+      run: |
+        # Setup environment
+        cp .env.docker.example .env
+        sed -i 's/your_secure_postgres_password_here/test_password/g' .env
+        sed -i 's/your_secure_redis_password_here/test_password/g' .env
+        
+        # Start with Docker Compose
+        docker-compose up -d --build
+        
+        # Wait for services to be ready
+        sleep 60
+
+    - name: Run integration tests
+      run: |
+        npm install -g newman
+        newman run tests/integration/api-collection.json \
+          --environment tests/integration/test-environment.json \
+          --reporters cli,html \
+          --reporter-html-export integration-test-report.html
+      continue-on-error: true
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-results
+        path: integration-test-report.html
+        retention-days: 7
+
+    - name: Cleanup
+      run: docker-compose down -v
+
+  # Accessibility Tests
+  accessibility-test:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Serve application
+      run: |
+        npm install -g serve
+        serve -s dist -p 3000 &
+        sleep 10
+
+    - name: Run accessibility tests
+      run: |
+        npm install -g @axe-core/cli
+        axe http://localhost:3000 --tags wcag2a,wcag2aa --reporter json --output-file accessibility-report.json
+      continue-on-error: true
+
+    - name: Upload accessibility results
+      uses: actions/upload-artifact@v4
+      with:
+        name: accessibility-results
+        path: frontend/accessibility-report.json
+        retention-days: 30

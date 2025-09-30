@@ -74,14 +74,37 @@ npm run dev
 
 ## 🚀 Deployment
 
-### Railway + Render + Vercel
+### Option A: Docker Deployment (Recommended)
+Complete stack deployment with Docker Compose:
+
+```bash
+# Quick setup (Windows)
+./scripts/docker-dev-setup.bat
+
+# Or manual setup
+cp .env.docker.example .env
+# Edit .env with your values
+docker-compose up -d
+```
+
+**Services:**
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
+
+**Production deployment:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+### Option B: Cloud Deployment (Railway + Vercel)
 1. **Database**: PostgreSQL + Redis on Railway
-2. **Backend**: Express API on Render
+2. **Backend**: Express API on Railway (https://livpulse-backend-production.up.railway.app)
 3. **Frontend**: React app on Vercel
 
 See deployment guides:
 - [Railway Setup](./backend/RAILWAY_DEPLOY.md)
-- [Render Backend](./backend/RENDER_DEPLOY.md)
 - [Vercel Frontend](./frontend/VERCEL_DEPLOY.md)
 
 ## 📊 API Endpoints

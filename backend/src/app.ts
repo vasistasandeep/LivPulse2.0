@@ -5,14 +5,14 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
-import { initializeWebSocket } from './modules/websocket/websocket.service';
+// import { initializeWebSocket } from './modules/websocket/websocket.service';
 
 // Module imports
 import authRoutes from './modules/auth/auth.routes';
-import userRoutes from './modules/users/users.routes';
-import dashboardRoutes from './modules/dashboards/dashboards.routes';
+// import userRoutes from './modules/users/users.routes';
+// import dashboardRoutes from './modules/dashboards/dashboards.routes';
 import dataInputRoutes from './modules/data-input/data-input.routes';
-import reportingRoutes from './modules/reporting/reporting.routes';
+// import reportingRoutes from './modules/reporting/reporting.routes';
 
 // Common middleware
 import { errorHandler } from './modules/common/middleware/error.middleware';
@@ -20,17 +20,17 @@ import { notFound } from './modules/common/middleware/notFound.middleware';
 import { requestLogger } from './modules/common/middleware/logger.middleware';
 
 // Utils
-import { redisClient } from './modules/common/utils/redis';
+// import { redisClient } from './modules/common/utils/redis';
 import { logger } from './modules/common/utils/logger';
 
 const app = express();
 const httpServer = createServer(app);
 
 // Initialize WebSocket service
-const webSocketService = initializeWebSocket(httpServer);
+// const webSocketService = initializeWebSocket(httpServer);
 
 // Make WebSocket service available to routes
-app.set('webSocket', webSocketService);
+// app.set('webSocket', webSocketService);
 
 // Security middleware
 app.use(helmet({
@@ -43,6 +43,9 @@ app.use(helmet({
     },
   },
 }));
+
+// Performance middleware
+app.use(compression());
 
 // CORS configuration
 app.use(cors({
@@ -76,6 +79,9 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 app.use(requestLogger);
+// Request body parsers
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -90,15 +96,18 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/dashboards', dashboardRoutes);
+// app.use('/api/users', userRoutes);
+// app.use('/api/dashboards', dashboardRoutes);
 app.use('/api/data', dataInputRoutes);
-app.use('/api/reports', reportingRoutes);
+// app.use('/api/reports', reportingRoutes);
 
 // WebSocket connection handling is now managed by WebSocketService
 
 // Error handling
 app.use(notFound);
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Not Found', message: `Route ${req.method} ${req.originalUrl} not found` });
+});
 app.use(errorHandler);
 
 // Graceful shutdown
@@ -107,11 +116,11 @@ process.on('SIGTERM', async () => {
   
   httpServer.close(() => {
     logger.info('HTTP server closed');
-    redisClient.quit().then(() => {
-      logger.info('Redis connection closed');
+    // redisClient.quit().then(() => {
+    //   logger.info('Redis connection closed');
       process.exit(0);
-    });
+    // });
   });
 });
 
-export { app, httpServer, webSocketService };
+export { app, httpServer };

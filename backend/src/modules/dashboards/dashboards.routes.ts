@@ -1,6 +1,6 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken, canAccessDashboard, AuthRequest } from '../common/middleware/auth.middleware';
+// import { authenticateToken, canAccessDashboard, AuthRequest } from '../common/middleware/auth.middleware';
 import { validateDashboardInput, validateDashboardUpdate } from './dashboards.validation';
 import { logger } from '../common/utils/logger';
 

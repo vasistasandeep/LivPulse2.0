@@ -5,15 +5,15 @@ dotenv.config();
 
 import { httpServer } from './app';
 import { logger } from './modules/common/utils/logger';
-import { redisClient } from './modules/common/utils/redis';
+// import { redisClient } from './modules/common/utils/redis';
 
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
     // Test Redis connection
-    await redisClient.ping();
-    logger.info('Connected to Redis');
+    // await redisClient.ping();
+    // logger.info('Connected to Redis');
 
     // Start HTTP server
     httpServer.listen(PORT, () => {

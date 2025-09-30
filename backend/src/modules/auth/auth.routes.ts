@@ -13,13 +13,13 @@ const generateTokens = (userId: number) => {
   const accessToken = jwt.sign(
     { userId },
     process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' } as jwt.SignOptions
   );
 
   const refreshToken = jwt.sign(
     { userId },
     process.env.JWT_REFRESH_SECRET!,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' } as jwt.SignOptions
   );
 
   return { accessToken, refreshToken };
@@ -166,7 +166,6 @@ router.post('/refresh', async (req, res) => {
     // Check if session exists
     const session = await prisma.session.findUnique({
       where: { refreshToken },
-      include: { user: true },
     });
 
     if (!session || session.expiresAt < new Date()) {
