@@ -1,0 +1,50 @@
+# Railway Configuration for LivPulse v2.0 Backend
+# This file configures Railway deployment for PostgreSQL + Redis + API
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm install"
+watchPatterns = ["**/*.js", "**/*.json", "!../frontend/**"]
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+startCommand = "node server.js"
+
+[env]
+NODE_ENV = "production"
+PORT = "10000"
+
+# Database and Redis URLs will be automatically injected by Railway
+# when you connect PostgreSQL and Redis services to this project
+
+# Required environment variables to set in Railway dashboard:
+# JWT_SECRET = "your-production-jwt-secret-256-bit"
+# JWT_REFRESH_SECRET = "your-production-refresh-secret-256-bit"
+# FRONTEND_URL = "https://your-app.vercel.app"
+# SMTP_URL = "smtp://username:password@smtp.gmail.com:587"
+
+[build.env]
+NODE_VERSION = "18"
+NPM_VERSION = "9"
+
+[experimental]
+nixpacksVersion = "1.15.0"
+
+# Resource configuration
+[resources]
+memory = "1GB"
+cpu = "1"
+
+# Networking
+[networking]
+serviceDomain = "livpulse-api"
+
+# Health check configuration
+[healthcheck]
+path = "/api/health"
+interval = 30
+timeout = 10
+retries = 3
