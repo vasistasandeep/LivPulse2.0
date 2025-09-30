@@ -111,6 +111,14 @@ app.get('/api/debug/db-status', async (req, res) => {
   try {
     const { prisma } = await import('./lib/database');
     
+    if (!prisma || typeof prisma.user?.count !== 'function') {
+      return res.status(500).json({
+        status: 'error',
+        message: 'Prisma client not properly initialized',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     // Test if we can query the users table
     const userCount = await prisma.user.count();
     
@@ -129,6 +137,18 @@ app.get('/api/debug/db-status', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// Debug: Environment variables check
+app.get('/api/debug/env-check', (req, res) => {
+  res.json({
+    status: 'success',
+    environment: process.env.NODE_ENV,
+    hasDatabase: !!process.env.DATABASE_URL,
+    hasJwtSecret: !!process.env.JWT_SECRET,
+    frontendUrl: process.env.FRONTEND_URL,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // API routes
