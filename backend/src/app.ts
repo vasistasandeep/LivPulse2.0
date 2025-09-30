@@ -101,51 +101,27 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug endpoint to initialize database and create test user
-app.post('/api/debug/init-db', async (req, res) => {
+// Debug: Database setup endpoint
+app.get('/api/debug/db-status', async (req, res) => {
   try {
     const { prisma } = await import('./lib/database');
-    const bcrypt = await import('bcryptjs');
     
-    // Push database schema (equivalent to prisma db push)
-    await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    // Test if we can query the users table
+    const userCount = await prisma.user.count();
     
-    // Try to create the user (this will also test if tables exist)
-    const existingUser = await prisma.user.findUnique({
-      where: { email: 'executive@company.com' }
-    }).catch(() => null);
-
-    if (existingUser) {
-      return res.json({ 
-        message: 'Database already initialized, test user exists', 
-        email: existingUser.email 
-      });
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash('executive123', 10);
-
-    // Create test user
-    const user = await prisma.user.create({
-      data: {
-        email: 'executive@company.com',
-        password: hashedPassword,
-        name: 'Executive User',
-        role: 'Executive',
-        status: true,
-      },
-    });
-
-    res.json({ 
-      message: 'Database initialized and test user created successfully', 
-      email: user.email 
+    res.json({
+      status: 'success',
+      message: 'Database is ready',
+      userCount,
+      timestamp: new Date().toISOString()
     });
   } catch (error: any) {
-    logger.error('Error initializing database:', error);
-    res.status(500).json({ 
-      error: 'Failed to initialize database', 
-      details: error.message,
-      code: error.code 
+    res.status(500).json({
+      status: 'error',
+      message: 'Database not ready',
+      error: error.message,
+      code: error.code,
+      timestamp: new Date().toISOString()
     });
   }
 });
