@@ -1,0 +1,20 @@
+# Vercel ignore file - exclude backend and other non-frontend files
+backend/
+backend/**
+node_modules/
+.git/
+.github/
+*.md
+railway.toml.bak
+docker-compose*.yml
+scripts/
+setup.*
+start.sh
+render.yaml
+RAILWAY_*.md
+RENDER_*.md
+DOCKER_*.md
+CI_CD_*.md
+DEPLOYMENT*.md
+ENV_*.md
+CONTRIBUTING.md
