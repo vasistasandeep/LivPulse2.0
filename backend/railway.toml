@@ -3,15 +3,15 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "npm install && npm run build"
-watchPatterns = ["**/*.ts", "**/*.js", "**/*.json", "!../frontend/**"]
+buildCommand = "npm install"
+watchPatterns = ["**/*.js", "**/*.json", "!../frontend/**"]
 
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
-startCommand = "npm start"
+startCommand = "node server.js"
 
 [env]
 NODE_ENV = "production"
