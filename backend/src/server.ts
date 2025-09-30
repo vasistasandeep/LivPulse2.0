@@ -1,30 +1,71 @@
-import dotenv from 'dotenv';
+import { app, httpServer } from './app';
 
-// Load environment variables
-dotenv.config();
-
-import { httpServer } from './app';
-import { logger } from './modules/common/utils/logger';
-// import { redisClient } from './modules/common/utils/redis';
-
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 async function startServer() {
   try {
-    // Test Redis connection
-    // await redisClient.ping();
-    // logger.info('Connected to Redis');
+    // Try to initialize database
+    try {
+      console.log('[INFO] Initializing database connection...');
+      const { prisma } = await import('./lib/database');
+      await prisma.$connect();
+      console.log('[INFO] Database initialized successfully');
+    } catch (dbError: any) {
+      console.error('[ERROR] Database initialization failed:', dbError.message);
+      console.log('[WARN] Server will start without database connection');
+    }
 
     // Start HTTP server
     httpServer.listen(PORT, () => {
-      logger.info(`🚀 LivPulse v2.0 Backend running on port ${PORT}`);
-      logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      console.log(`[INFO] Server running on port ${PORT}`);
+      console.log(`[INFO] Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`[INFO] Health check: http://localhost:${PORT}/api/health`);
     });
-  } catch (error) {
-    logger.error('Failed to start server:', error);
+
+    // Graceful shutdown handlers
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
+
+  } catch (error: any) {
+    console.error('[ERROR] Failed to start server:', error.message);
     process.exit(1);
   }
 }
 
+async function gracefulShutdown(signal: string) {
+  console.log(`[INFO] ${signal} received, shutting down gracefully...`);
+  
+  httpServer.close(async () => {
+    try {
+      // Try to close database connection
+      const { prisma } = await import('./lib/database');
+      await prisma.$disconnect();
+      console.log('[INFO] Database connection closed');
+    } catch (error) {
+      console.log('[WARN] Database cleanup failed:', error);
+    }
+    
+    console.log('[INFO] Server shutdown complete');
+    process.exit(0);
+  });
+
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    console.error('[ERROR] Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('[ERROR] Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[ERROR] Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Start the server
 startServer();

@@ -5,34 +5,21 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
-// import { initializeWebSocket } from './modules/websocket/websocket.service';
-
-// Module imports
-import authRoutes from './modules/auth/auth.routes';
-// import userRoutes from './modules/users/users.routes';
-// import dashboardRoutes from './modules/dashboards/dashboards.routes';
-import dataInputRoutes from './modules/data-input/data-input.routes';
-// import reportingRoutes from './modules/reporting/reporting.routes';
-
-// Common middleware
-import { errorHandler } from './modules/common/middleware/error.middleware';
-import { notFound } from './modules/common/middleware/notFound.middleware';
-import { requestLogger } from './modules/common/middleware/logger.middleware';
-
-// Utils
-// import { redisClient } from './modules/common/utils/redis';
-import { logger } from './modules/common/utils/logger';
 
 const app = express();
 const httpServer = createServer(app);
 
-// Initialize WebSocket service
-// const webSocketService = initializeWebSocket(httpServer);
+// Simple console logger fallback
+const logger = {
+  info: (message: string) => console.log(`[INFO] ${message}`),
+  error: (message: string) => console.error(`[ERROR] ${message}`),
+  warn: (message: string) => console.warn(`[WARN] ${message}`)
+};
 
-// Make WebSocket service available to routes
-// app.set('webSocket', webSocketService);
+// Trust proxy for Railway
+app.set('trust proxy', 1);
 
-// Security middleware
+// Basic security
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -44,16 +31,16 @@ app.use(helmet({
   },
 }));
 
-// Performance middleware
+// Performance
 app.use(compression());
 
-// CORS configuration
+// CORS
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'https://liv-pulse-frontend.vercel.app',
   process.env.FRONTEND_URL
-].filter(Boolean);
+].filter((origin): origin is string => Boolean(origin));
 
 app.use(cors({
   origin: allowedOrigins,
@@ -64,19 +51,15 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-  },
+  windowMs: 900000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests' },
   standardHeaders: true,
   legacyHeaders: false,
 });
-
 app.use('/api', limiter);
 
-// General middleware
-app.use(compression());
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -85,12 +68,7 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 }
 
-app.use(requestLogger);
-// Request body parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Health check endpoint
+// Health endpoints
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -101,45 +79,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Simple ping endpoint for basic connectivity test
 app.get('/api/ping', (req, res) => {
   res.json({ message: 'pong', timestamp: new Date().toISOString() });
 });
 
-// Debug: Database setup endpoint
-app.get('/api/debug/db-status', async (req, res) => {
-  try {
-    const { prisma } = await import('./lib/database');
-    
-    if (!prisma || typeof prisma.user?.count !== 'function') {
-      return res.status(500).json({
-        status: 'error',
-        message: 'Prisma client not properly initialized',
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    // Test if we can query the users table
-    const userCount = await prisma.user.count();
-    
-    res.json({
-      status: 'success',
-      message: 'Database is ready',
-      userCount,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      status: 'error',
-      message: 'Database not ready',
-      error: error.message,
-      code: error.code,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Debug: Environment variables check
 app.get('/api/debug/env-check', (req, res) => {
   res.json({
     status: 'success',
@@ -151,32 +94,51 @@ app.get('/api/debug/env-check', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/auth', authRoutes);
-// app.use('/api/users', userRoutes);
-// app.use('/api/dashboards', dashboardRoutes);
-app.use('/api/data', dataInputRoutes);
-// app.use('/api/reports', reportingRoutes);
+// Try to load auth routes safely
+try {
+  const authRoutes = require('./modules/auth/auth.routes').default;
+  app.use('/api/auth', authRoutes);
+  logger.info('Auth routes loaded successfully');
+} catch (error) {
+  logger.error(`Failed to load auth routes: ${error}`);
+  // Provide fallback auth endpoints
+  app.post('/api/auth/login', (req, res) => {
+    res.status(503).json({ error: 'Authentication service temporarily unavailable' });
+  });
+}
 
-// WebSocket connection handling is now managed by WebSocketService
+// Try to load data input routes safely
+try {
+  const dataInputRoutes = require('./modules/data-input/data-input.routes').default;
+  app.use('/api/data', dataInputRoutes);
+  logger.info('Data input routes loaded successfully');
+} catch (error) {
+  logger.error(`Failed to load data input routes: ${error}`);
+}
 
-// Error handling
-app.use(notFound);
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Not Found', message: `Route ${req.method} ${req.originalUrl} not found` });
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Not Found', 
+    message: `Route ${req.method} ${req.originalUrl} not found` 
+  });
 });
-app.use(errorHandler);
+
+// Error handler
+app.use((error: any, req: any, res: any, next: any) => {
+  logger.error(`Server error: ${error.message}`);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
-  
   httpServer.close(() => {
     logger.info('HTTP server closed');
-    // redisClient.quit().then(() => {
-    //   logger.info('Redis connection closed');
-      process.exit(0);
-    // });
+    process.exit(0);
   });
 });
 
