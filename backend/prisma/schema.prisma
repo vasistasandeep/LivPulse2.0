@@ -1,0 +1,253 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  password    String
+  name        String?
+  role        Role
+  status      Boolean   @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  dashboards      Dashboard[]
+  kpiMetrics      KpiMetric[]
+  contentPerf     ContentPerformance[]
+  risks           Risk[]
+  bugsSprints     BugSprint[]
+  infraMetrics    InfraMetric[]
+  csvUploads      CsvUpload[]
+  createdReports  Report[]
+
+  @@map("users")
+}
+
+model Dashboard {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  layout      Json // Widget configuration and layout
+  permissions Json // Role-based access control
+  isPublic    Boolean @default(false)
+  createdBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("dashboards")
+}
+
+model KpiMetric {
+  id          Int      @id @default(autoincrement())
+  name        String
+  category    String   // e.g., "Revenue", "Growth", "Engagement"
+  value       Float
+  unit        String?  // e.g., "USD", "%", "count"
+  target      Float?
+  period      String   // e.g., "Q1-2024", "Jan-2024"
+  dateRange   Json     // {start: "2024-01-01", end: "2024-01-31"}
+  metadata    Json?    // Additional flexible data
+  createdBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@index([category, period])
+  @@map("kpi_metrics")
+}
+
+model ContentPerformance {
+  id           Int      @id @default(autoincrement())
+  contentId    String   // External content identifier
+  contentTitle String
+  contentType  String   // "movie", "series", "episode"
+  platform     String   // "web", "mobile", "tv"
+  views        BigInt   @default(0)
+  watchTime    Float    @default(0) // in minutes
+  engagement   Float    @default(0) // engagement rate %
+  revenue      Float    @default(0)
+  region       String?
+  dateRange    Json     // {start: "2024-01-01", end: "2024-01-31"}
+  metadata     Json?    // Additional OTT-specific metrics
+  createdBy    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@index([contentType, platform, region])
+  @@map("content_performance")
+}
+
+model Risk {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  category    String   // "Technical", "Business", "Legal", "Operational"
+  severity    Severity
+  probability String   // "Low", "Medium", "High"
+  impact      String   // "Low", "Medium", "High"
+  status      String   // "Open", "Mitigated", "Closed"
+  owner       String?
+  mitigation  String?
+  dueDate     DateTime?
+  metadata    Json?
+  createdBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@index([category, severity, status])
+  @@map("risks")
+}
+
+model BugSprint {
+  id          Int      @id @default(autoincrement())
+  type        String   // "bug" or "sprint"
+  title       String
+  description String?
+  priority    Priority
+  status      String   // "Open", "In Progress", "Testing", "Closed"
+  assignee    String?
+  reporter    String?
+  sprintName  String?  // For sprint entries
+  storyPoints Int?     // For sprint entries
+  labels      String[] // Array of labels
+  dueDate     DateTime?
+  resolvedAt  DateTime?
+  metadata    Json?    // Jira/GitHub integration data
+  createdBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@index([type, status, priority])
+  @@map("bugs_sprints")
+}
+
+model InfraMetric {
+  id          Int      @id @default(autoincrement())
+  service     String   // "CDN", "API", "Database", "Cache"
+  metric      String   // "uptime", "latency", "throughput", "error_rate"
+  value       Float
+  unit        String   // "ms", "%", "req/s", "GB"
+  threshold   Float?   // Alert threshold
+  region      String?
+  environment String   // "production", "staging", "development"
+  timestamp   DateTime
+  metadata    Json?    // Additional infrastructure data
+  createdBy   Int
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@index([service, metric, environment, timestamp])
+  @@map("infra_metrics")
+}
+
+model CsvUpload {
+  id          Int      @id @default(autoincrement())
+  filename    String
+  originalName String
+  size        Int      // File size in bytes
+  mimeType    String
+  targetTable String   // Which table the data will be inserted into
+  status      UploadStatus
+  preview     Json?    // First few rows for preview
+  errors      Json?    // Validation errors
+  rowCount    Int?     // Total rows processed
+  processedAt DateTime?
+  createdBy   Int
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@map("csv_uploads")
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  name        String
+  type        String   // "pdf", "excel", "csv"
+  query       Json     // Report configuration/query
+  schedule    String?  // Cron expression for scheduled reports
+  recipients  String[] // Email addresses
+  lastRun     DateTime?
+  nextRun     DateTime?
+  status      String   // "active", "paused", "failed"
+  createdBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@map("reports")
+}
+
+// Session management for JWT refresh tokens
+model Session {
+  id           String   @id @default(uuid())
+  userId       Int
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Enums
+enum Role {
+  Admin     // Full control including user management
+  Executive // Dashboards read-only
+  PM        // Explore KPIs + add KPI data
+  TPM       // Admin minus user management
+  EM        // Access/update tech data
+  SRE       // Access/alter infra & CDN data
+}
+
+enum Severity {
+  Low
+  Medium
+  High
+  Critical
+}
+
+enum Priority {
+  Low
+  Medium
+  High
+  Urgent
+}
+
+enum UploadStatus {
+  Pending    // File uploaded, not processed
+  Processing // Currently being processed
+  Preview    // Ready for user preview/confirmation
+  Completed  // Successfully processed and committed
+  Failed     // Processing failed
+}

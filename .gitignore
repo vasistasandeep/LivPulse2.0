@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Uploads and user content
+uploads/
+temp-uploads/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.backup
+*.bak
+
+# Cache directories
+.cache/
+.parcel-cache/
+.vite/
+
+# Testing
+test-results/
+playwright-report/
+__tests__/
+
+# Sentry
+.sentryclirc
+
+# Deployment
+.vercel
+.netlify
+
+# Package manager
+.pnpm-store/
+.yarn/

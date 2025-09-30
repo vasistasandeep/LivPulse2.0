@@ -1,0 +1,26 @@
+# Railway Configuration
+# This file configures Railway deployment for PostgreSQL + Redis
+
+[build]
+  # Railway will automatically install dependencies
+
+[deploy]
+  # Railway will use the Dockerfile for deployment
+
+[env]
+  # Environment variables for Railway
+  NODE_ENV = "production"
+  
+  # These will be set from Railway dashboard:
+  # DATABASE_URL (auto-provided by Railway Postgres)
+  # REDIS_URL (auto-provided by Railway Redis)
+  
+  # Required environment variables to set:
+  # JWT_SECRET
+  # JWT_REFRESH_SECRET
+  # FRONTEND_URL
+  # SMTP_URL
+
+[build.env]
+  # Build-time environment variables
+  NODE_VERSION = "18"

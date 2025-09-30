@@ -1,0 +1,30 @@
+{
+  "name": "livpulse-frontend",
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_BACKEND_URL": "@backend_url",
+    "VITE_WEBSOCKET_URL": "@websocket_url",
+    "VITE_APP_NAME": "LivPulse v2.0",
+    "VITE_APP_VERSION": "2.0.0",
+    "VITE_ENABLE_REAL_TIME": "true",
+    "VITE_CSV_MAX_SIZE_MB": "10"
+  },
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "framework": "vite"
+}
