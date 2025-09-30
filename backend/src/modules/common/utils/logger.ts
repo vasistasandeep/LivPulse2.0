@@ -8,20 +8,21 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: { service: 'livpulse-backend' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+  transports: [],
 });
 
-// If we're not in production, log to the console with a simple format
+// Always add console transport
+logger.add(new winston.transports.Console({
+  format: winston.format.combine(
+    winston.format.colorize(),
+    winston.format.simple()
+  )
+}));
+
+// Only add file transports in development
 if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
+  logger.add(new winston.transports.File({ filename: 'logs/error.log', level: 'error' }));
+  logger.add(new winston.transports.File({ filename: 'logs/combined.log' }));
 }
 
 export { logger };
