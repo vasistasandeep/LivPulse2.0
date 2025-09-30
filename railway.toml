@@ -3,7 +3,7 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "cd backend && PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --only=production && npm run build && npx prisma generate"
+buildCommand = "cd backend && PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --only=production --legacy-peer-deps && npm run build && npx prisma generate"
 
 [deploy]
 healthcheckPath = "/api/health"
