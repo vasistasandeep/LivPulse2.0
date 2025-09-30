@@ -1,0 +1,19 @@
+# Railway ignore file - exclude frontend and other non-backend files
+../frontend/
+../frontend/**
+../node_modules/
+../.github/
+../docker-compose*.yml
+../scripts/
+../setup.*
+../start.sh
+../render.yaml
+../*.md
+../RAILWAY_*.md
+../RENDER_*.md
+../VERCEL_*.md
+../DOCKER_*.md
+../CI_CD_*.md
+../DEPLOYMENT*.md
+../ENV_*.md
+../CONTRIBUTING.md
