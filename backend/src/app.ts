@@ -101,6 +101,42 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Debug endpoint to create test user (remove in production)
+app.post('/api/debug/create-test-user', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { prisma } = require('./lib/database');
+    
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: 'executive@company.com' }
+    });
+
+    if (existingUser) {
+      return res.json({ message: 'Test user already exists', email: existingUser.email });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash('executive123', 10);
+
+    // Create test user
+    const user = await prisma.user.create({
+      data: {
+        email: 'executive@company.com',
+        password: hashedPassword,
+        name: 'Executive User',
+        role: 'Executive',
+        status: true,
+      },
+    });
+
+    res.json({ message: 'Test user created successfully', email: user.email });
+  } catch (error: any) {
+    logger.error('Error creating test user:', error);
+    res.status(500).json({ error: 'Failed to create test user', details: error.message });
+  }
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 // app.use('/api/users', userRoutes);
