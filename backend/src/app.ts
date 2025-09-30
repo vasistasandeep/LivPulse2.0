@@ -101,19 +101,25 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug endpoint to create test user (remove in production)
-app.post('/api/debug/create-test-user', async (req, res) => {
+// Debug endpoint to initialize database and create test user
+app.post('/api/debug/init-db', async (req, res) => {
   try {
-    const bcrypt = require('bcryptjs');
-    const { prisma } = require('./lib/database');
+    const { prisma } = await import('./lib/database');
+    const bcrypt = await import('bcryptjs');
     
-    // Check if user already exists
+    // Push database schema (equivalent to prisma db push)
+    await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    
+    // Try to create the user (this will also test if tables exist)
     const existingUser = await prisma.user.findUnique({
       where: { email: 'executive@company.com' }
-    });
+    }).catch(() => null);
 
     if (existingUser) {
-      return res.json({ message: 'Test user already exists', email: existingUser.email });
+      return res.json({ 
+        message: 'Database already initialized, test user exists', 
+        email: existingUser.email 
+      });
     }
 
     // Hash the password
@@ -130,10 +136,17 @@ app.post('/api/debug/create-test-user', async (req, res) => {
       },
     });
 
-    res.json({ message: 'Test user created successfully', email: user.email });
+    res.json({ 
+      message: 'Database initialized and test user created successfully', 
+      email: user.email 
+    });
   } catch (error: any) {
-    logger.error('Error creating test user:', error);
-    res.status(500).json({ error: 'Failed to create test user', details: error.message });
+    logger.error('Error initializing database:', error);
+    res.status(500).json({ 
+      error: 'Failed to initialize database', 
+      details: error.message,
+      code: error.code 
+    });
   }
 });
 

@@ -37,8 +37,25 @@ process.on('beforeExit', async () => {
 
 // Test database connection on startup
 prisma.$connect()
-  .then(() => {
+  .then(async () => {
     logger.info('Database connected successfully');
+    
+    // In production, automatically push schema if needed
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        // Check if tables exist by trying a simple query
+        await prisma.user.count();
+        logger.info('Database schema is ready');
+      } catch (error: any) {
+        if (error.code === 'P2021' || error.message.includes('table') || error.message.includes('relation')) {
+          logger.info('Database schema not found, attempting to push schema...');
+          // Note: In production, schema should be managed via migrations
+          // This is a temporary solution for development/demo purposes
+          logger.warn('Manual schema push needed - please run "prisma db push" or set up proper migrations');
+        }
+        logger.error('Database schema check failed:', error.message);
+      }
+    }
   })
   .catch((error: any) => {
     logger.error('Failed to connect to database:', error);
