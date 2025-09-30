@@ -1,0 +1,43 @@
+{
+  "name": "livpulse-monorepo",
+  "version": "2.0.0",
+  "description": "LivPulse v2.0 - OTT Platform Management System",
+  "private": true,
+  "scripts": {
+    "build": "cd backend && npm install && npm run build",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "dev:frontend": "cd frontend && npm run dev",
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "postinstall": "npm run setup:backend"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vasistasandeep/LivPulse2.0.git"
+  },
+  "author": "Sandeep Vasista",
+  "license": "MIT",
+  "keywords": [
+    "ott",
+    "platform",
+    "management",
+    "dashboard",
+    "analytics",
+    "typescript",
+    "react",
+    "nodejs",
+    "postgresql",
+    "redis"
+  ]
+}
