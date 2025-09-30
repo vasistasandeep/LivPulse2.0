@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: livpulse-backend
+    runtime: node
+    region: oregon
+    plan: starter
+    repo: https://github.com/vasistasandeep/LivPulse2.0
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET  
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: "15m"
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: "7d"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "1000"
+      - key: ENABLE_REAL_TIME
+        value: "true"
+      - key: ENABLE_FILE_UPLOADS
+        value: "true"
+      - key: ENABLE_USER_REGISTRATION
+        value: "false"
+      # Add these manually in Render dashboard:
+      # DATABASE_URL: [from Railway PostgreSQL]
+      # REDIS_URL: [from Railway Redis]  
+      # FRONTEND_URL: [from Vercel deployment]
+      # SMTP_URL: [optional email service]
