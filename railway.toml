@@ -1,12 +1,11 @@
-# Railway Monorepo Configuration
-# This file tells Railway to build the backend service
+# Railway Configuration for LivPulse v2.0 Backend
+# Uses Docker for reliable builds (avoiding Nixpacks issues)
 
 [build]
-builder = "nixpacks"
-buildCommand = "cd backend && npm install && npm run build"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "cd backend && npm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -16,10 +15,9 @@ restartPolicyMaxRetries = 10
 NODE_ENV = "production"
 PORT = "10000"
 
-[build.env]
-NODE_VERSION = "18"
-NPM_VERSION = "9"
-
-# Experimental features
-[experimental]
-nixpacksVersion = "1.15.0"
+# Health check configuration
+[healthcheck]
+path = "/api/health"
+interval = 30
+timeout = 10
+retries = 3
