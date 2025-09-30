@@ -1,11 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import { logger } from '../modules/common/utils/logger';
 
-// Simple console logger fallback
-const logger = {
-  info: (message: string) => console.log(`[INFO] ${message}`),
-  error: (message: string) => console.error(`[ERROR] ${message}`),
-  warn: (message: string) => console.warn(`[WARN] ${message}`)
-};
+// Global Prisma client instance with proper configuration
+declare global {
+  var __prisma: PrismaClient | undefined;
+}
 
 // Global Prisma client instance with proper configuration
 declare global {
@@ -32,7 +31,7 @@ try {
     prisma = global.__prisma;
   }
 } catch (error: any) {
-  logger.error('Failed to initialize Prisma client:' + error.message);
+  logger.error('Failed to initialize Prisma client:', error);
   // Create a mock prisma object to prevent app crash
   prisma = {} as PrismaClient;
 }
@@ -45,7 +44,7 @@ process.on('beforeExit', async () => {
       logger.info('Prisma client disconnected');
     }
   } catch (error: any) {
-    logger.error('Error disconnecting Prisma client:' + error.message);
+    logger.error('Error disconnecting Prisma client:', error);
   }
 });
 
@@ -66,13 +65,13 @@ if (typeof prisma.$connect === 'function') {
           if (error.code === 'P2021' || error.message.includes('table') || error.message.includes('relation')) {
             logger.warn('Database schema not found - tables may need to be created');
           } else {
-            logger.error('Database schema check failed:' + error.message);
+            logger.error('Database schema check failed:', error.message);
           }
         }
       }
     })
     .catch((error: any) => {
-      logger.error('Failed to connect to database:' + error.message);
+      logger.error('Failed to connect to database:', error);
       logger.warn('Continuing startup without database connection for debugging...');
     });
 } else {
