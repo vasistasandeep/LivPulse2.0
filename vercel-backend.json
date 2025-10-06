@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "livpulse-backend",
+  "builds": [
+    {
+      "src": "backend/src/server-super-minimal.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "backend/src/server-super-minimal.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "FRONTEND_URL": "https://liv-pulse-frontend.vercel.app"
+  }
+}
