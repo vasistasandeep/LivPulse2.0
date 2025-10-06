@@ -1,8 +1,0 @@
-# Force Railway to use Nixpacks instead of Docker
-# This file ensures Nixpacks builder is used
-
-[build]
-  buildCommand = "npm ci && npm run build"
-
-[start]
-  cmd = "npm start"

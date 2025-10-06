@@ -1,18 +1,16 @@
 [build]
 builder = "nixpacks"
 buildCommand = "npm ci && npm run build"
-watchPatterns = ["**/*.ts", "**/*.js", "**/*.json", "!../frontend/**"]
 
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 3
 startCommand = "npm start"
 
 [env]
 NODE_ENV = "production"
-PORT = "10000"
 
 # Required environment variables to set in Railway dashboard:
 # DATABASE_URL = "postgresql://..." (auto-injected by Railway PostgreSQL)
