@@ -1,83 +1,80 @@
 import { PrismaClient } from '@prisma/client';
 
-// Simple console logger fallback
-const logger = {
-  info: (message: string) => console.log(`[INFO] ${message}`),
-  error: (message: string) => console.error(`[ERROR] ${message}`),
-  warn: (message: string) => console.warn(`[WARN] ${message}`)
+// Enhanced logger for database operations
+const dbLogger = {
+  info: (message: string) => console.log(`[DB INFO] ${message}`),
+  error: (message: string) => console.error(`[DB ERROR] ${message}`),
+  warn: (message: string) => console.warn(`[DB WARN] ${message}`)
 };
 
-// Global Prisma client instance with proper configuration
+// Global Prisma client instance
 declare global {
   var __prisma: PrismaClient | undefined;
 }
 
-// Use a global variable to prevent multiple instances in development
-// due to hot reloading
+// Create Prisma client with optimized configuration
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' 
+      ? ['query', 'info', 'warn', 'error']
+      : ['error', 'warn'],
+    errorFormat: process.env.NODE_ENV === 'development' ? 'pretty' : 'minimal',
+  });
+}
+
+// Initialize Prisma client with singleton pattern
 let prisma: PrismaClient;
 
-try {
-  if (process.env.NODE_ENV === 'production') {
-    prisma = new PrismaClient({
-      log: ['error', 'warn'],
-      errorFormat: 'minimal',
-    });
-  } else {
-    if (!global.__prisma) {
-      global.__prisma = new PrismaClient({
-        log: ['query', 'info', 'warn', 'error'],
-        errorFormat: 'pretty',
-      });
-    }
-    prisma = global.__prisma;
+if (process.env.NODE_ENV === 'production') {
+  prisma = createPrismaClient();
+} else {
+  if (!global.__prisma) {
+    global.__prisma = createPrismaClient();
   }
-} catch (error: any) {
-  logger.error('Failed to initialize Prisma client:' + error.message);
-  // Create a mock prisma object to prevent app crash
-  prisma = {} as PrismaClient;
+  prisma = global.__prisma;
 }
 
-// Handle graceful shutdown
-process.on('beforeExit', async () => {
+// Connection management functions
+export async function connectDatabase(): Promise<void> {
   try {
-    if (prisma && typeof prisma.$disconnect === 'function') {
-      await prisma.$disconnect();
-      logger.info('Prisma client disconnected');
-    }
+    await prisma.$connect();
+    dbLogger.info('Database connected successfully');
+    
+    // Test the connection
+    await prisma.$queryRaw`SELECT 1`;
+    dbLogger.info('Database connection verified');
+    
   } catch (error: any) {
-    logger.error('Error disconnecting Prisma client:' + error.message);
+    dbLogger.error(`Database connection failed: ${error.message}`);
+    throw error;
   }
+}
+
+export async function disconnectDatabase(): Promise<void> {
+  try {
+    await prisma.$disconnect();
+    dbLogger.info('Database disconnected successfully');
+  } catch (error: any) {
+    dbLogger.error(`Database disconnection failed: ${error.message}`);
+  }
+}
+
+// Health check function
+export async function checkDatabaseHealth(): Promise<boolean> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch (error) {
+    dbLogger.error('Database health check failed');
+    return false;
+  }
+}
+
+// Graceful shutdown handler
+process.on('beforeExit', async () => {
+  await disconnectDatabase();
 });
 
-// Test database connection on startup (non-blocking)
-if (typeof prisma.$connect === 'function') {
-  prisma.$connect()
-    .then(async () => {
-      logger.info('Database connected successfully');
-      
-      // In production, check if tables exist
-      if (process.env.NODE_ENV === 'production') {
-        try {
-          if (typeof prisma.user?.count === 'function') {
-            await prisma.user.count();
-            logger.info('Database schema is ready');
-          }
-        } catch (error: any) {
-          if (error.code === 'P2021' || error.message.includes('table') || error.message.includes('relation')) {
-            logger.warn('Database schema not found - tables may need to be created');
-          } else {
-            logger.error('Database schema check failed:' + error.message);
-          }
-        }
-      }
-    })
-    .catch((error: any) => {
-      logger.error('Failed to connect to database:' + error.message);
-      logger.warn('Continuing startup without database connection for debugging...');
-    });
-} else {
-  logger.warn('Prisma client not properly initialized - database unavailable');
-}
-
+// Export the Prisma client
 export { prisma };
 export default prisma;
