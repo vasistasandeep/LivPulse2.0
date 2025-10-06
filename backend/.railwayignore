@@ -17,3 +17,10 @@
 ../DEPLOYMENT*.md
 ../ENV_*.md
 ../CONTRIBUTING.md
+
+# Exclude problematic cache directories
+node_modules/.cache
+.npm
+.cache
+dist/.cache
+build/.cache
