@@ -1,0 +1,13 @@
+{
+  "name": "livpulse-backend-vercel",
+  "version": "1.0.0",
+  "description": "LivPulse Backend for Vercel Serverless",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

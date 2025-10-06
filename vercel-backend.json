@@ -13,6 +13,14 @@
       "dest": "backend/src/server-super-minimal.js"
     }
   ],
+  "functions": {
+    "backend/src/server-super-minimal.js": {
+      "includeFiles": "backend/package.json"
+    }
+  },
+  "installCommand": "cd backend && npm install",
+  "buildCommand": null,
+  "outputDirectory": null,
   "env": {
     "NODE_ENV": "production",
     "FRONTEND_URL": "https://liv-pulse-frontend.vercel.app"
