@@ -6,7 +6,28 @@ import { PrismaClient } from '@prisma/client';
 import { logger } from '../common/utils/logger';
 
 const prisma = new PrismaClient();
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+// Redis with graceful fallback
+let redis: Redis | null = null;
+let isRedisAvailable = false;
+
+try {
+  if (process.env.REDIS_URL) {
+    redis = new Redis(process.env.REDIS_URL);
+    redis.on('ready', () => {
+      isRedisAvailable = true;
+      logger.info('WebSocket Redis connected');
+    });
+    redis.on('error', (err) => {
+      logger.error('WebSocket Redis error:', err);
+      isRedisAvailable = false;
+    });
+  } else {
+    logger.warn('No REDIS_URL for WebSocket service, running without Redis pub/sub');
+  }
+} catch (error) {
+  logger.error('Failed to initialize Redis for WebSocket:', error);
+}
 
 interface AuthenticatedSocket extends Socket {
   userId?: number;
